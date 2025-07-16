@@ -196,7 +196,64 @@ class VigorDevice():
 
         _log.debug("get_filter_status: " + result)
         return result
+        
+ #adding bypass control      
+    def get_bypass_mode(self):
+        """
+        Gets the current bypass control mode
+        Returns: 'auto', 'open', 'closed', or 'error'
+        """
+        command = 6100  # Based on Brink documentation pattern for bypass mode
+        rr = self.client.read_holding_registers(command, 1, unit=self.UNIT)
+        if rr.isError():
+            return self._handle_error(rr, "get_bypass_mode", command)
 
+        _bypass_control_modes = {
+            0: "auto",      # Automatic function
+            1: "closed",    # Bypass closed
+            2: "open"       # Bypass open
+        }
+        value = rr.registers[0]
+        result = _bypass_control_modes.get(value, "unknown (" + str(value) + ")")
+
+        _log.debug("get_bypass_mode: " + result)
+        return result
+
+    def set_bypass_mode(self, mode):
+        """
+        Sets the bypass control mode
+        
+        :param mode: 'auto' for automatic function, 'open' to force open, 'closed' to force closed
+        """
+        if type(mode) == int:
+            mode_value = min(2, max(0, mode))
+        elif type(mode) == str:
+            if mode == "auto":
+                mode_value = 0
+            elif mode == "closed":
+                mode_value = 1
+            elif mode == "open":
+                mode_value = 2
+            else:
+                _log.error("set_bypass_mode: invalid mode '" + str(mode) + "', must be 'auto', 'open', or 'closed'")
+                return
+        else:
+            _log.error("set_bypass_mode: invalid mode type, must be string or int")
+            return
+
+        command = 6100  # Based on Brink documentation pattern for bypass mode
+        rr = self.client.read_holding_registers(command, 1, unit=self.UNIT)
+        if rr.isError():
+            return self._handle_error(rr, "set_bypass_mode.1", command)
+
+        value = rr.registers[0]
+        if value != mode_value:
+            _log.debug("set_bypass_mode: setting bypass mode to " + str(mode_value) + " (" + str(mode) + ")")
+            rr = self.client.write_register(command, mode_value, unit=self.UNIT)
+            if rr.isError():
+                return self._handle_error(rr, "set_bypass_mode.2", command)
+        else:
+            _log.debug("set_bypass_mode: bypass mode is already " + str(value) + " (" + str(mode) + ")")
 
 
     def set_modbus_mode(self, mode):
