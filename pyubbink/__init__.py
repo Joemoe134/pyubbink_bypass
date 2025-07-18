@@ -217,6 +217,30 @@ class VigorDevice():
                 return self._handle_error(rr, "set_modbus_mode.2", command)
         
  #adding bypass control      
+    def get_bypass_mode(self):
+        command = 6100
+        rr = self.client.read_holding_registers(command, 1, unit=self.UNIT)
+        if rr.isError():
+            return self._handle_error(rr, "get_bypass_mode.1", command)
+        if rr.registers[0] == 0:
+            return "auto"
+        if rr.registers[1] == 1:
+            return "closed"
+        if rr.registers[0] == 2:
+            return "open"
+
+        command = 8001
+        rr = self.client.read_holding_registers(command, 1, unit=self.UNIT)
+        if rr.isError():
+            return self._handle_error(rr, "get_bypass_mode.2", command)
+        value = rr.registers[0]
+
+        if value == 0: return "auto"
+        if value == 1: return "closed"
+        if value == 2: return "open"
+
+        return "unknown (" + str(value) + ")"
+            
     def set_bypass_mode(self, mode):
         """ 
         Enables the control of the device through Modbus
@@ -230,8 +254,8 @@ class VigorDevice():
                 mode_value = 1
             elif mode == "open":
                 mode_value = 2
-            elif mode == "wall_unit":
-                _log.debug("set_bypass_mode: reverting to wall unit control")
+           elif mode == "wall_unit":
+                _log.debug("set_airflow_mode: reverting to wall unit control")
                 self.set_modbus_mode(0)
                 return
 
@@ -251,6 +275,7 @@ class VigorDevice():
         else:
             _log.debug("set_bypass_mode: bypass mode is already " + str(value))
 
+    
     
     def get_airflow_mode(self):
         command = 8000
